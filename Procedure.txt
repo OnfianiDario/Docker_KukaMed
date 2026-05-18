@@ -1,0 +1,74 @@
+# KUKA Med LBR 7 - ROS 1 Bridge (Docker su WSL2)
+
+Questo repository contiene l'infrastruttura Docker plug-and-play per comunicare con il KUKA Med LBR 7 utilizzando il ROS 1 Bridge verso ROS 2. Questa configurazione è ottimizzata per l'esecuzione su portatili Windows tramite WSL2.
+
+## 🛠 Fase 1: Compilazione (Build)
+*Da eseguire solo la prima volta o se si modificano i file sorgenti.*
+
+Apri il terminale (Ubuntu WSL) nella cartella del progetto ed esegui:
+```bash
+docker build --network=host -t kuka_ros1_bridge .
+(Nota: Assicurati di aver aggiunto le istruzioni di source nel tuo Dockerfile per automatizzare l'ambiente ROS).
+
+🚀 Fase 2: Avvio Standard
+Da eseguire sempre come punto di partenza.
+
+Terminale 1 (Host - Ubuntu WSL):
+
+Bash
+docker run -it -p 5005:5005 kuka_ros1_bridge
+(Il server si avvierà e resterà in attesa sulla porta 5005. Lascia questo terminale aperto).
+
+🤖 Fase 3A: Esecuzione CON il Robot Reale (Laboratorio)
+Connetti il cavo Ethernet e imposta l'IP statico di Windows su 172.31.1.150.
+
+Sul pad del KUKA, avvia l'applicazione Java (Sunrise) impostando come target l'IP del PC (172.31.1.150) e la porta 5005.
+
+Verifica sul Terminale 1 che il robot risulti connesso ("Client connected").
+
+Terminale 2 (Per usare il telecomando demo):
+
+Bash
+docker exec -it $(docker ps -q -l) bash
+rosrun kuka_ros_node demo_node
+(Tip: Se hai configurato l'alias nel tuo .bashrc, ti basterà digitare kuka-in al posto del comando docker exec...).
+
+💻 Fase 3B: Simulazione (SENZA Robot Reale)
+Per testare l'infrastruttura software senza il braccio robotico connesso.
+
+Terminale 2 (Avvio del Demo Node):
+
+Bash
+docker exec -it $(docker ps -q -l) bash
+rosrun kuka_ros_node demo_node
+(Il nodo rimarrà in attesa. Passa al Terminale 3 per sbloccarlo).
+
+Terminale 3 (Sblocco simulato):
+
+Bash
+docker exec -it $(docker ps -q -l) bash
+rostopic pub -1 /robot/state/joint_states sensor_msgs/JointState "{name: ['lbr_joint_0', 'lbr_joint_1', 'lbr_joint_2', 'lbr_joint_3', 'lbr_joint_4', 'lbr_joint_5', 'lbr_joint_6'], position: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}"
+(Ora il menu interattivo nel Terminale 2 sarà sbloccato e funzionante).
+
+📡 Fase 4: Lettura Dati su ROS 2 (Host PC)
+Comandi da eseguire su un terminale Ubuntu WSL (fuori dal container) per verificare la comunicazione.
+
+Verificare i topic disponibili:
+
+Bash
+ros2 topic list
+Ascoltare i comandi in uscita (es. verso il robot):
+
+Bash
+ros2 topic echo /robot/cmd/joint_ptp
+Leggere lo stato in ingresso (dal robot):
+
+Bash
+ros2 topic echo /robot/state/joint_states
+⚠️ Risoluzione dei Problemi Frequenti
+Errore: Bind for 0.0.0.0:5005 failed: port is already allocated
+Se ottieni questo errore all'avvio del Terminale 1, la porta 5005 è rimasta incastrata.
+
+Elimina i container bloccati in WSL: docker rm -f $(docker ps -aq)
+
+Elimina i vecchi proxy di Windows (Apri il Prompt dei Comandi come Amministratore): netsh interface portproxy reset

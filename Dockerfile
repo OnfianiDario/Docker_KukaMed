@@ -22,4 +22,8 @@ RUN /bin/bash -c "source /opt/ros/noetic/setup.bash && catkin build"
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
+# Automatizza il source di ROS 1 Noetic e del workspace per l'utente root
+RUN echo "source /opt/ros/noetic/setup.bash" >> /root/.bashrc
+RUN echo "source /ros1_ws/devel/setup.bash" >> /root/.bashrc
+
 ENTRYPOINT ["/entrypoint.sh"]
